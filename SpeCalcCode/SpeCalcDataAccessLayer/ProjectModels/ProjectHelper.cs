@@ -41,7 +41,7 @@ namespace SpeCalcDataAccessLayer.Models
             var list = new List<string>();
 
             int i = 0;
-            int quarters = (12 - (DateTime.Now.Month))/3;//Вычисляем сколько кварталов осталось
+            int quarters = (12 - (DateTime.Now.Month)) / 3;//Вычисляем сколько кварталов осталось
             i = 4 - quarters;
             while (true)
             {
@@ -57,8 +57,8 @@ namespace SpeCalcDataAccessLayer.Models
                 i++;
                 string item = $"{i} квартал {DateTime.Now.Year + 1}";
                 list.Add(item);
-                
-                if (i>= 4)break;
+
+                if (i >= 4) break;
             }
 
             return list;
@@ -118,7 +118,7 @@ namespace SpeCalcDataAccessLayer.Models
         {
             using (var db = new SpeCalcEntities())
             {
-                var list = db.ProjectBusinessTargets.Where(x => x.Enabled).OrderBy(x => x.OrderNum).ThenBy(x=>x.Name).ToList();
+                var list = db.ProjectBusinessTargets.Where(x => x.Enabled).OrderBy(x => x.OrderNum).ThenBy(x => x.Name).ToList();
                 return list;
             }
         }
@@ -141,13 +141,13 @@ namespace SpeCalcDataAccessLayer.Models
             }
         }
         [OutputCache(Duration = 3600)]
-        public static IEnumerable<ProjectSaleSubjects> GetSaleSubjectList(int? idDirection=null)
+        public static IEnumerable<ProjectSaleSubjects> GetSaleSubjectList(int? idDirection = null)
         {
             //if (!idDirection.HasValue) return new List<ProjectSaleSubjects>();
             using (var db = new SpeCalcEntities())
             {
                 var list = db.ProjectSaleSubjects.Where(x => x.Enabled)
-                    .Where(x=> !idDirection.HasValue || idDirection <= 0 || (idDirection.HasValue && idDirection > 0 && x.IdSaleDirection == idDirection))
+                    .Where(x => !idDirection.HasValue || idDirection <= 0 || (idDirection.HasValue && idDirection > 0 && x.IdSaleDirection == idDirection))
                     .OrderBy(x => x.OrderNum).ThenBy(x => x.Name).ToList();
                 return list;
             }
@@ -165,7 +165,7 @@ namespace SpeCalcDataAccessLayer.Models
                     var item = new KeyValuePair<int, string>(m.Id, m.Name);
                     list.Add(item);
                 }
-                
+
 
                 return list;
             }
@@ -190,11 +190,114 @@ namespace SpeCalcDataAccessLayer.Models
             }
         }
 
-        public static IEnumerable<ProjectStates> GetProjectStatesFilterList()
+        public static IEnumerable<ProjectStates> GetProjectStatesFilterList(string curUserSid)
         {
             using (var db = new SpeCalcEntities())
             {
-                var list = db.ProjectStates.Where(x => x.Enabled).OrderBy(x => x.OrderNum).ThenBy(x => x.Name).Include(x=>x.Projects).ToList();
+
+                #region Other variants
+                /*              
+                // Вариант без фильтра
+                // var list = db.ProjectStates.Where(x => x.Enabled).OrderBy(x => x.OrderNum).ThenBy(x => x.Name).Include(x=>x.Projects).ToList();
+
+                // Данный прием не сработал. Коллекции проектов не отфильтровались
+                var list = db.ProjectStates.Where(x => x.Enabled)
+                        .Select(x => new
+                        {
+                            ListStates = x,
+                            Projects = x.Projects.Where(y =>
+                                y.Enabled &&
+                                //Где указан в команде
+                                (
+                                y.ProjectTeams.Any(z => z.Enabled && z.UserSid == curUserSid)
+                                ||
+                                //Его направления
+                                (y.SaleDirectionId.HasValue &&
+                                db.ProjectSaleDirectionResponsibles.Where(z => z.Enabled && z.UserSid == curUserSid).Select(z => z.SaleDirectionId).Contains(y.SaleDirectionId.Value)
+                                )
+                                ||
+                                      //Продакт
+                                      (
+                                      db.ProjectPositions.Any(z => z.Enabled && z.CalculatorSid == curUserSid) ||
+                                      db.ProjectWorks.Any(z => z.Enabled && z.CalculatorSid == curUserSid)
+                                      )
+                                ||
+                                //Менеджер
+                                y.ManagerSid == curUserSid
+                                ||
+                                //Автор
+                                y.CreatorSid == curUserSid
+                                )
+                            )
+                        }).AsEnumerable().Select(x => x.ListStates)
+                            .OrderBy(x => x.OrderNum).ThenBy(x => x.Name)
+                            .ToList();
+                            
+                // Данный запрос также возвращает нефильтрованный список проектов
+                var list = db.ProjectStates.Where(x=>x.Projects.Any(y=>
+                            //Где указан в команде
+                            (
+                            y.ProjectTeams.Any(z => z.Enabled && z.UserSid == curUserSid)
+                            ||
+                            //Его направления
+                            (y.SaleDirectionId.HasValue &&
+                            db.ProjectSaleDirectionResponsibles.Where(z => z.Enabled && z.UserSid == curUserSid).Select(z => z.SaleDirectionId).Contains(y.SaleDirectionId.Value)
+                            )
+                            ||
+                                  //Продакт
+                                  (
+                                  db.ProjectPositions.Any(z => z.Enabled && z.CalculatorSid == curUserSid) ||
+                                  db.ProjectWorks.Any(z => z.Enabled && z.CalculatorSid == curUserSid)
+                                  )
+                            ||
+                            //Менеджер
+                            y.ManagerSid == curUserSid
+                            ||
+                            //Автор
+                            y.CreatorSid == curUserSid
+                            )
+                    )).Include(x=>x.Projects)
+                      .OrderBy(x => x.OrderNum).ThenBy(x => x.Name)
+                      .ToList();
+                */
+                #endregion
+
+                var states = db.ProjectStates.AsNoTracking().Where(x => x.Enabled).Include(x=>x.Projects).ToList();
+                var list = new List<ProjectStates>();
+                var pr = new List<Projects>();
+
+                if (!String.IsNullOrEmpty(curUserSid))
+                {
+                    foreach (var state in states)
+                    {
+                        pr = state.Projects.Where(y =>
+                                //Где указан в команде
+                                (
+                                y.ProjectTeams.Any(z => z.Enabled && z.UserSid == curUserSid)
+                                ||
+                                //Его направления
+                                (y.SaleDirectionId.HasValue &&
+                                db.ProjectSaleDirectionResponsibles.Where(z => z.Enabled && z.UserSid == curUserSid).Select(z => z.SaleDirectionId).Contains(y.SaleDirectionId.Value)
+                                )
+                                ||
+                                      //Продакт
+                                      (
+                                      db.ProjectPositions.Any(z => z.Enabled && z.CalculatorSid == curUserSid) ||
+                                      db.ProjectWorks.Any(z => z.Enabled && z.CalculatorSid == curUserSid)
+                                      )
+                                ||
+                                //Менеджер
+                                y.ManagerSid == curUserSid
+                                ||
+                                //Автор
+                                y.CreatorSid == curUserSid
+                                )
+                            ).ToList();
+
+                        state.Projects = new List<Projects>(pr);
+                        list.Add(state);
+                    }
+                }
                 return list;
             }
         }
@@ -213,7 +316,7 @@ namespace SpeCalcDataAccessLayer.Models
         {
             using (var db = new SpeCalcEntities())
             {
-                var list = db.ProjectSaleDirections.Where(x => x.Enabled).Include(x=>x.ProjectSaleDirectionResponsibles).OrderBy(x => x.OrderNum).ThenBy(x => x.Name).ToList();
+                var list = db.ProjectSaleDirections.Where(x => x.Enabled).Include(x => x.ProjectSaleDirectionResponsibles).OrderBy(x => x.OrderNum).ThenBy(x => x.Name).ToList();
                 return list;
             }
         }
