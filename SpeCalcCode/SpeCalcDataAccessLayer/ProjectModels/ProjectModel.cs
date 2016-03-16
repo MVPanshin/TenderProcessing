@@ -103,7 +103,7 @@ namespace SpeCalcDataAccessLayer.ProjectModels
                     (
                         //Где указан в команде
                         x.ProjectTeams.Any(y => y.Enabled && y.UserSid == curUserSid)
-                        ||
+                        ||  
                         //Его направления
                         (x.SaleDirectionId.HasValue &&
                         db.ProjectSaleDirectionResponsibles.Where(y => y.Enabled && y.UserSid == curUserSid).Select(y => y.SaleDirectionId).Contains(x.SaleDirectionId.Value)

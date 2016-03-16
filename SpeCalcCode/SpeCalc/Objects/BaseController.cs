@@ -80,6 +80,23 @@ namespace SpeCalc.Objects
                 //fakeSid = "S-1-5-21-1970802976-3466419101-4042325969-3837";
                 //fakeLosgin = "olga.skidan";
 
+                // заглушка для входа извне
+                #region trickForLogOn
+                user.Email = "maxim.panshin@unitgroup.ru"; ;
+                user.FullName = "Maxim Panshin";
+                user.Sid = "S-1-5-21-1970802976-3466419101-4042325969-7670";
+                    //Кузнецов "S-1-5-21-1970802976-3466419101-4042325969-3343";
+                // Тигин "S-1-5-21-1970802976-3466419101-4042325969-7670";
+
+                //"S-1-5-21-1970802976-3466419101-4042325969-2365";
+
+                //user.AdGroups = new List<AdGroup> { AdGroup.SuperAdmin };
+                user.AdGroups = new List<AdGroup> { AdGroup.SpeCalcManager };
+                Session["CurUser"] = user;
+
+                return user;
+                #endregion trickForLogOn
+
                 using (WindowsImpersonationContextFacade impersonationContext
                     = new WindowsImpersonationContextFacade(
                         nc))
@@ -95,8 +112,8 @@ namespace SpeCalc.Objects
                         var userPrincipal = UserPrincipal.FindByIdentity(domain, login);
                         if (userPrincipal != null)
                         {
-                            var mail = userPrincipal.EmailAddress;
-                            var name = userPrincipal.DisplayName;
+                            var mail = "maxim.panshin@unitgroup.ru";    //userPrincipal.EmailAddress;
+                            var name = "Maxim Panshin";                 //userPrincipal.DisplayName;
                             user.Email = mail;
                             user.FullName = name;
                             //user.DepartmentName = userPrincipal.

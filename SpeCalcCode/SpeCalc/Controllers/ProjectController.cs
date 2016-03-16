@@ -934,7 +934,10 @@ namespace SpeCalc.Controllers
         [OutputCache(Duration = 60)]
         public PartialViewResult GetStateFilterList(string state)
         {
+            string curUserSid = CurUser.HasAccess(AdGroup.SpeCalcProjectControler, AdGroup.SpeCalcProjectViewer) ? null : CurUser.Sid;
             ViewBag.State = state;
+            ViewBag.curUserSid = curUserSid;
+
             return PartialView("StateFilterList");
         }
 
